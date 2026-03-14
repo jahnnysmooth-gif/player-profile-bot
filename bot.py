@@ -45,6 +45,7 @@ OUTLOOK_UNLOCK_DATE = date(2026, 4, 15)
 intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+bot.remove_command("stats")
 
 # =========================
 # TEAM COLORS / ABBREVS / LOGOS
