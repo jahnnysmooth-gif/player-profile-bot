@@ -1,0 +1,1009 @@
+{
+  "paused": false,
+  "completed": false,
+  "current_index": 2,
+  "total_players": 250,
+  "last_run_ts": 1773512577,
+  "seed_players": [
+    {
+      "name": "Shohei Ohtani",
+      "pos": ""
+    },
+    {
+      "name": "Aaron Judge",
+      "pos": ""
+    },
+    {
+      "name": "Bobby Witt Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Juan Soto",
+      "pos": ""
+    },
+    {
+      "name": "Jose Ramirez",
+      "pos": ""
+    },
+    {
+      "name": "Tarik Skubal",
+      "pos": ""
+    },
+    {
+      "name": "Ronald Acuna Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Elly De La Cruz",
+      "pos": ""
+    },
+    {
+      "name": "Paul Skenes",
+      "pos": ""
+    },
+    {
+      "name": "Julio Rodriguez",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Tucker",
+      "pos": ""
+    },
+    {
+      "name": "Garrett Crochet",
+      "pos": ""
+    },
+    {
+      "name": "Fernando Tatis Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Cal Raleigh",
+      "pos": ""
+    },
+    {
+      "name": "Gunnar Henderson",
+      "pos": ""
+    },
+    {
+      "name": "Corbin Carroll",
+      "pos": ""
+    },
+    {
+      "name": "Junior Caminero",
+      "pos": ""
+    },
+    {
+      "name": "Vladimir Guerrero Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Nick Kurtz",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Schwarber",
+      "pos": ""
+    },
+    {
+      "name": "Jazz Chisholm Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Jackson Chourio",
+      "pos": ""
+    },
+    {
+      "name": "Francisco Lindor",
+      "pos": ""
+    },
+    {
+      "name": "Pete Alonso",
+      "pos": ""
+    },
+    {
+      "name": "Yoshinobu Yamamoto",
+      "pos": ""
+    },
+    {
+      "name": "Ketel Marte",
+      "pos": ""
+    },
+    {
+      "name": "Trea Turner",
+      "pos": ""
+    },
+    {
+      "name": "Cristopher Sanchez",
+      "pos": ""
+    },
+    {
+      "name": "Manny Machado",
+      "pos": ""
+    },
+    {
+      "name": "Pete Crow-Armstrong",
+      "pos": ""
+    },
+    {
+      "name": "James Wood",
+      "pos": ""
+    },
+    {
+      "name": "Yordan Alvarez",
+      "pos": ""
+    },
+    {
+      "name": "Zach Neto",
+      "pos": ""
+    },
+    {
+      "name": "Hunter Brown",
+      "pos": ""
+    },
+    {
+      "name": "Bryan Woo",
+      "pos": ""
+    },
+    {
+      "name": "Matt Olson",
+      "pos": ""
+    },
+    {
+      "name": "Bryce Harper",
+      "pos": ""
+    },
+    {
+      "name": "Logan Gilbert",
+      "pos": ""
+    },
+    {
+      "name": "Chris Sale",
+      "pos": ""
+    },
+    {
+      "name": "Rafael Devers",
+      "pos": ""
+    },
+    {
+      "name": "Mason Miller",
+      "pos": ""
+    },
+    {
+      "name": "Brent Rooker",
+      "pos": ""
+    },
+    {
+      "name": "Edwin Diaz",
+      "pos": ""
+    },
+    {
+      "name": "Max Fried",
+      "pos": ""
+    },
+    {
+      "name": "Mookie Betts",
+      "pos": ""
+    },
+    {
+      "name": "Brice Turang",
+      "pos": ""
+    },
+    {
+      "name": "Wyatt Langford",
+      "pos": ""
+    },
+    {
+      "name": "Logan Webb",
+      "pos": ""
+    },
+    {
+      "name": "Cole Ragans",
+      "pos": ""
+    },
+    {
+      "name": "Jacob deGrom",
+      "pos": ""
+    },
+    {
+      "name": "Freddie Freeman",
+      "pos": ""
+    },
+    {
+      "name": "Roman Anthony",
+      "pos": ""
+    },
+    {
+      "name": "William Contreras",
+      "pos": ""
+    },
+    {
+      "name": "Andres Munoz",
+      "pos": ""
+    },
+    {
+      "name": "Josh Naylor",
+      "pos": ""
+    },
+    {
+      "name": "Freddy Peralta",
+      "pos": ""
+    },
+    {
+      "name": "Austin Riley",
+      "pos": ""
+    },
+    {
+      "name": "Jhoan Duran",
+      "pos": ""
+    },
+    {
+      "name": "Jarren Duran",
+      "pos": ""
+    },
+    {
+      "name": "Geraldo Perdomo",
+      "pos": ""
+    },
+    {
+      "name": "Riley Greene",
+      "pos": ""
+    },
+    {
+      "name": "Cody Bellinger",
+      "pos": ""
+    },
+    {
+      "name": "Cade Smith",
+      "pos": ""
+    },
+    {
+      "name": "Ben Rice",
+      "pos": ""
+    },
+    {
+      "name": "Hunter Greene",
+      "pos": ""
+    },
+    {
+      "name": "Jackson Merrill",
+      "pos": ""
+    },
+    {
+      "name": "Maikel Garcia",
+      "pos": ""
+    },
+    {
+      "name": "George Kirby",
+      "pos": ""
+    },
+    {
+      "name": "CJ Abrams",
+      "pos": ""
+    },
+    {
+      "name": "Dylan Cease",
+      "pos": ""
+    },
+    {
+      "name": "Shea Langeliers",
+      "pos": ""
+    },
+    {
+      "name": "Byron Buxton",
+      "pos": ""
+    },
+    {
+      "name": "George Springer",
+      "pos": ""
+    },
+    {
+      "name": "Hunter Goodman",
+      "pos": ""
+    },
+    {
+      "name": "Joe Ryan",
+      "pos": ""
+    },
+    {
+      "name": "Jesus Luzardo",
+      "pos": ""
+    },
+    {
+      "name": "Framber Valdez",
+      "pos": ""
+    },
+    {
+      "name": "Vinnie Pasquantino",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Bradish",
+      "pos": ""
+    },
+    {
+      "name": "Aroldis Chapman",
+      "pos": ""
+    },
+    {
+      "name": "Tyler Soderstrom",
+      "pos": ""
+    },
+    {
+      "name": "Randy Arozarena",
+      "pos": ""
+    },
+    {
+      "name": "Seiya Suzuki",
+      "pos": ""
+    },
+    {
+      "name": "David Bednar",
+      "pos": ""
+    },
+    {
+      "name": "Corey Seager",
+      "pos": ""
+    },
+    {
+      "name": "Oneil Cruz",
+      "pos": ""
+    },
+    {
+      "name": "Bo Bichette",
+      "pos": ""
+    },
+    {
+      "name": "Eugenio Suarez",
+      "pos": ""
+    },
+    {
+      "name": "Nick Pivetta",
+      "pos": ""
+    },
+    {
+      "name": "Alex Bregman",
+      "pos": ""
+    },
+    {
+      "name": "Devin Williams",
+      "pos": ""
+    },
+    {
+      "name": "Christian Yelich",
+      "pos": ""
+    },
+    {
+      "name": "Nico Hoerner",
+      "pos": ""
+    },
+    {
+      "name": "Nolan McLean",
+      "pos": ""
+    },
+    {
+      "name": "Eury Perez",
+      "pos": ""
+    },
+    {
+      "name": "Salvador Perez",
+      "pos": ""
+    },
+    {
+      "name": "Jose Altuve",
+      "pos": ""
+    },
+    {
+      "name": "Will Smith",
+      "pos": ""
+    },
+    {
+      "name": "Blake Snell",
+      "pos": ""
+    },
+    {
+      "name": "Kevin Gausman",
+      "pos": ""
+    },
+    {
+      "name": "Michael Harris II",
+      "pos": ""
+    },
+    {
+      "name": "Michael Busch",
+      "pos": ""
+    },
+    {
+      "name": "Jeremy Pena",
+      "pos": ""
+    },
+    {
+      "name": "Drake Baldwin",
+      "pos": ""
+    },
+    {
+      "name": "Sonny Gray",
+      "pos": ""
+    },
+    {
+      "name": "Spencer Strider",
+      "pos": ""
+    },
+    {
+      "name": "Josh Hader",
+      "pos": ""
+    },
+    {
+      "name": "Agustin Ramirez",
+      "pos": ""
+    },
+    {
+      "name": "Tyler Glasnow",
+      "pos": ""
+    },
+    {
+      "name": "Jacob Misiorowski",
+      "pos": ""
+    },
+    {
+      "name": "Raisel Iglesias",
+      "pos": ""
+    },
+    {
+      "name": "Chase Burns",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Stowers",
+      "pos": ""
+    },
+    {
+      "name": "Willy Adames",
+      "pos": ""
+    },
+    {
+      "name": "Trevor Story",
+      "pos": ""
+    },
+    {
+      "name": "Teoscar Hernandez",
+      "pos": ""
+    },
+    {
+      "name": "Brandon Nimmo",
+      "pos": ""
+    },
+    {
+      "name": "Luke Keaschall",
+      "pos": ""
+    },
+    {
+      "name": "Carlos Estevez",
+      "pos": ""
+    },
+    {
+      "name": "Brandon Woodruff",
+      "pos": ""
+    },
+    {
+      "name": "Luis Robert Jr.",
+      "pos": ""
+    },
+    {
+      "name": "Jo Adell",
+      "pos": ""
+    },
+    {
+      "name": "Yandy Diaz",
+      "pos": ""
+    },
+    {
+      "name": "Cam Schlittler",
+      "pos": ""
+    },
+    {
+      "name": "Ryan Helsley",
+      "pos": ""
+    },
+    {
+      "name": "Nick Lodolo",
+      "pos": ""
+    },
+    {
+      "name": "Trey Yesavage",
+      "pos": ""
+    },
+    {
+      "name": "Zack Wheeler",
+      "pos": ""
+    },
+    {
+      "name": "Ozzie Albies",
+      "pos": ""
+    },
+    {
+      "name": "Taylor Ward",
+      "pos": ""
+    },
+    {
+      "name": "Jakob Marsee",
+      "pos": ""
+    },
+    {
+      "name": "Michael King",
+      "pos": ""
+    },
+    {
+      "name": "Nathan Eovaldi",
+      "pos": ""
+    },
+    {
+      "name": "Lawrence Butler",
+      "pos": ""
+    },
+    {
+      "name": "Ryan Pepiot",
+      "pos": ""
+    },
+    {
+      "name": "Emmet Sheehan",
+      "pos": ""
+    },
+    {
+      "name": "Jeff Hoffman",
+      "pos": ""
+    },
+    {
+      "name": "Andy Pages",
+      "pos": ""
+    },
+    {
+      "name": "Matt Chapman",
+      "pos": ""
+    },
+    {
+      "name": "Luis Castillo",
+      "pos": ""
+    },
+    {
+      "name": "Yainer Diaz",
+      "pos": ""
+    },
+    {
+      "name": "Noelvi Marte",
+      "pos": ""
+    },
+    {
+      "name": "Gavin Williams",
+      "pos": ""
+    },
+    {
+      "name": "Emilio Pagan",
+      "pos": ""
+    },
+    {
+      "name": "Trevor Megill",
+      "pos": ""
+    },
+    {
+      "name": "Ian Happ",
+      "pos": ""
+    },
+    {
+      "name": "MacKenzie Gore",
+      "pos": ""
+    },
+    {
+      "name": "Daniel Palencia",
+      "pos": ""
+    },
+    {
+      "name": "Steven Kwan",
+      "pos": ""
+    },
+    {
+      "name": "Dansby Swanson",
+      "pos": ""
+    },
+    {
+      "name": "Trevor Rogers",
+      "pos": ""
+    },
+    {
+      "name": "Sandy Alcantara",
+      "pos": ""
+    },
+    {
+      "name": "Adley Rutschman",
+      "pos": ""
+    },
+    {
+      "name": "Brandon Lowe",
+      "pos": ""
+    },
+    {
+      "name": "Pete Fairbanks",
+      "pos": ""
+    },
+    {
+      "name": "Ceddanne Rafaela",
+      "pos": ""
+    },
+    {
+      "name": "Bubba Chandler",
+      "pos": ""
+    },
+    {
+      "name": "Drew Rasmussen",
+      "pos": ""
+    },
+    {
+      "name": "Kenley Jansen",
+      "pos": ""
+    },
+    {
+      "name": "Xavier Edwards",
+      "pos": ""
+    },
+    {
+      "name": "Ranger Suarez",
+      "pos": ""
+    },
+    {
+      "name": "Jacob Wilson",
+      "pos": ""
+    },
+    {
+      "name": "Jackson Holliday",
+      "pos": ""
+    },
+    {
+      "name": "Robbie Ray",
+      "pos": ""
+    },
+    {
+      "name": "Chandler Simpson",
+      "pos": ""
+    },
+    {
+      "name": "Mike Trout",
+      "pos": ""
+    },
+    {
+      "name": "Tatsuya Imai",
+      "pos": ""
+    },
+    {
+      "name": "Shota Imanaga",
+      "pos": ""
+    },
+    {
+      "name": "Kazuma Okamoto",
+      "pos": ""
+    },
+    {
+      "name": "Alejandro Kirk",
+      "pos": ""
+    },
+    {
+      "name": "Tanner Bibee",
+      "pos": ""
+    },
+    {
+      "name": "Ivan Herrera",
+      "pos": ""
+    },
+    {
+      "name": "Alec Burleson",
+      "pos": ""
+    },
+    {
+      "name": "Colson Montgomery",
+      "pos": ""
+    },
+    {
+      "name": "Bryson Stott",
+      "pos": ""
+    },
+    {
+      "name": "Bryan Reynolds",
+      "pos": ""
+    },
+    {
+      "name": "Isaac Paredes",
+      "pos": ""
+    },
+    {
+      "name": "Spencer Torkelson",
+      "pos": ""
+    },
+    {
+      "name": "Jonathan Aranda",
+      "pos": ""
+    },
+    {
+      "name": "Willson Contreras",
+      "pos": ""
+    },
+    {
+      "name": "Jordan Westburg (BAL - 2B,3B) DTD",
+      "pos": ""
+    },
+    {
+      "name": "Cade Horton",
+      "pos": ""
+    },
+    {
+      "name": "Kris Bubic",
+      "pos": ""
+    },
+    {
+      "name": "Munetaka Murakami",
+      "pos": ""
+    },
+    {
+      "name": "Andrew Abbott",
+      "pos": ""
+    },
+    {
+      "name": "Christian Walker",
+      "pos": ""
+    },
+    {
+      "name": "Addison Barger",
+      "pos": ""
+    },
+    {
+      "name": "Dennis Santana",
+      "pos": ""
+    },
+    {
+      "name": "Carlos Rodon",
+      "pos": ""
+    },
+    {
+      "name": "Edward Cabrera",
+      "pos": ""
+    },
+    {
+      "name": "Konnor Griffin (PIT - SS,CF) NRI",
+      "pos": ""
+    },
+    {
+      "name": "Dylan Crews",
+      "pos": ""
+    },
+    {
+      "name": "Jac Caglianone",
+      "pos": ""
+    },
+    {
+      "name": "Marcus Semien",
+      "pos": ""
+    },
+    {
+      "name": "Daulton Varsho",
+      "pos": ""
+    },
+    {
+      "name": "Spencer Schwellenbach (ATL - SP) IL60",
+      "pos": ""
+    },
+    {
+      "name": "Abner Uribe",
+      "pos": ""
+    },
+    {
+      "name": "Sal Stewart",
+      "pos": ""
+    },
+    {
+      "name": "Gleyber Torres",
+      "pos": ""
+    },
+    {
+      "name": "Shane Baz",
+      "pos": ""
+    },
+    {
+      "name": "Robert Suarez",
+      "pos": ""
+    },
+    {
+      "name": "Ryan Walker",
+      "pos": ""
+    },
+    {
+      "name": "Sal Frelick",
+      "pos": ""
+    },
+    {
+      "name": "Jorge Polanco",
+      "pos": ""
+    },
+    {
+      "name": "Matthew Boyd",
+      "pos": ""
+    },
+    {
+      "name": "Jack Flaherty",
+      "pos": ""
+    },
+    {
+      "name": "Jose Caballero",
+      "pos": ""
+    },
+    {
+      "name": "Brendan Donovan",
+      "pos": ""
+    },
+    {
+      "name": "Royce Lewis",
+      "pos": ""
+    },
+    {
+      "name": "Gerrit Cole",
+      "pos": ""
+    },
+    {
+      "name": "Daylen Lile",
+      "pos": ""
+    },
+    {
+      "name": "Zac Gallen",
+      "pos": ""
+    },
+    {
+      "name": "Gabriel Moreno",
+      "pos": ""
+    },
+    {
+      "name": "Griffin Jax",
+      "pos": ""
+    },
+    {
+      "name": "Brenton Doyle",
+      "pos": ""
+    },
+    {
+      "name": "Aaron Nola",
+      "pos": ""
+    },
+    {
+      "name": "Shane Bieber",
+      "pos": ""
+    },
+    {
+      "name": "Shane McClanahan",
+      "pos": ""
+    },
+    {
+      "name": "Heliot Ramos",
+      "pos": ""
+    },
+    {
+      "name": "Matt McLain",
+      "pos": ""
+    },
+    {
+      "name": "Adolis Garcia",
+      "pos": ""
+    },
+    {
+      "name": "Joe Musgrove",
+      "pos": ""
+    },
+    {
+      "name": "Ezequiel Tovar",
+      "pos": ""
+    },
+    {
+      "name": "Max Muncy",
+      "pos": ""
+    },
+    {
+      "name": "Wilyer Abreu",
+      "pos": ""
+    },
+    {
+      "name": "Bryan Abreu",
+      "pos": ""
+    },
+    {
+      "name": "JJ Wetherholt (STL - 2B,3B,SS) NRI",
+      "pos": ""
+    },
+    {
+      "name": "Merrill Kelly",
+      "pos": ""
+    },
+    {
+      "name": "Kerry Carpenter",
+      "pos": ""
+    },
+    {
+      "name": "Samuel Basallo",
+      "pos": ""
+    },
+    {
+      "name": "Trent Grisham",
+      "pos": ""
+    },
+    {
+      "name": "J.T. Realmuto",
+      "pos": ""
+    },
+    {
+      "name": "Carter Jensen",
+      "pos": ""
+    },
+    {
+      "name": "Ramon Laureano",
+      "pos": ""
+    },
+    {
+      "name": "Giancarlo Stanton",
+      "pos": ""
+    },
+    {
+      "name": "Roki Sasaki",
+      "pos": ""
+    },
+    {
+      "name": "Caleb Durbin",
+      "pos": ""
+    },
+    {
+      "name": "Luis Arraez",
+      "pos": ""
+    },
+    {
+      "name": "Carlos Correa",
+      "pos": ""
+    },
+    {
+      "name": "Alec Bohm",
+      "pos": ""
+    },
+    {
+      "name": "Noah Cameron",
+      "pos": ""
+    },
+    {
+      "name": "Austin Wells",
+      "pos": ""
+    },
+    {
+      "name": "Otto Lopez",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Manzardo",
+      "pos": ""
+    },
+    {
+      "name": "Jung Hoo Lee",
+      "pos": ""
+    },
+    {
+      "name": "Francisco Alvarez",
+      "pos": ""
+    },
+    {
+      "name": "Kyle Teel",
+      "pos": ""
+    },
+    {
+      "name": "Colton Cowser",
+      "pos": ""
+    },
+    {
+      "name": "Jack Leiter",
+      "pos": ""
+    },
+    {
+      "name": "Xander Bogaerts",
+      "pos": ""
+    }
+  ]
+}
