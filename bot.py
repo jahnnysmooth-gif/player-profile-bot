@@ -173,13 +173,9 @@ def normalize_text(text: str) -> str:
     text = unicodedata.normalize("NFKD", text)
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = text.lower()
-
-    # Make matching more forgiving
     text = text.replace("'", "")
     text = text.replace("’", "")
     text = text.replace(".", "")
-
-    # Keep only letters/numbers/spaces/hyphens/parentheses, then normalize spaces
     text = re.sub(r"[^a-z0-9\s\-()]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
@@ -525,32 +521,92 @@ async def fetch_text(url: str, params=None):
 
 
 async def search_player_candidates(player_query: str):
+    candidates = []
+    seen_ids = set()
+
+    # Primary search: MLB StatsAPI
     url = "https://statsapi.mlb.com/api/v1/people/search"
     params = {"names": player_query}
     data = await fetch_json(url, params=params)
-    if not data:
-        return []
 
-    people = data.get("people", [])
-    candidates = []
+    if data:
+        people = data.get("people", [])
+        for p in people:
+            full_name = p.get("fullName")
+            player_id = p.get("id")
+            if not full_name or not player_id or player_id in seen_ids:
+                continue
 
-    for p in people:
-        full_name = p.get("fullName")
-        if not full_name:
-            continue
+            seen_ids.add(player_id)
+            candidates.append(
+                {
+                    "id": player_id,
+                    "full_name": full_name,
+                    "full_name_normalized": normalize_text(full_name),
+                    "current_age": p.get("currentAge"),
+                    "active": p.get("active", False),
+                    "primary_position": (p.get("primaryPosition") or {}).get("abbreviation"),
+                    "position_type": (p.get("primaryPosition") or {}).get("type"),
+                    "team_name": (p.get("currentTeam") or {}).get("name"),
+                }
+            )
 
-        candidates.append(
-            {
-                "id": p.get("id"),
-                "full_name": full_name,
-                "full_name_normalized": normalize_text(full_name),
-                "current_age": p.get("currentAge"),
-                "active": p.get("active", False),
-                "primary_position": (p.get("primaryPosition") or {}).get("abbreviation"),
-                "position_type": (p.get("primaryPosition") or {}).get("type"),
-                "team_name": (p.get("currentTeam") or {}).get("name"),
-            }
-        )
+    nq = normalize_text(player_query)
+    if any(c.get("full_name_normalized") == nq for c in candidates):
+        return candidates
+
+    # Fallback: pybaseball name lookup
+    try:
+        parts = player_query.strip().split()
+        if len(parts) >= 2:
+            first = parts[0]
+            last = " ".join(parts[1:])
+        elif len(parts) == 1:
+            first = None
+            last = parts[0]
+        else:
+            return candidates
+
+        from pybaseball import playerid_lookup
+
+        def _lookup():
+            return playerid_lookup(last, first, fuzzy=True)
+
+        df = await asyncio.to_thread(_lookup)
+
+        if df is not None and not df.empty:
+            for _, row in df.iterrows():
+                mlbam_id = row.get("key_mlbam")
+                name_first = row.get("name_first")
+                name_last = row.get("name_last")
+
+                if pd.isna(mlbam_id) or pd.isna(name_first) or pd.isna(name_last):
+                    continue
+
+                try:
+                    player_id = int(mlbam_id)
+                except Exception:
+                    continue
+
+                if player_id in seen_ids:
+                    continue
+
+                full_name = f"{str(name_first).strip()} {str(name_last).strip()}"
+                seen_ids.add(player_id)
+                candidates.append(
+                    {
+                        "id": player_id,
+                        "full_name": full_name,
+                        "full_name_normalized": normalize_text(full_name),
+                        "current_age": None,
+                        "active": True,
+                        "primary_position": None,
+                        "position_type": None,
+                        "team_name": None,
+                    }
+                )
+    except Exception as e:
+        print(f"pybaseball fallback lookup error for '{player_query}': {e}")
 
     return candidates
 
@@ -573,19 +629,16 @@ def choose_best_candidate(query: str, candidates: list[dict]):
         return exact[0], candidates
 
     startswith_matches = [c for c in candidates if c.get("full_name_normalized", "").startswith(nq)]
-    if startswith_matches:
-        startswith_matches.sort(
-            key=lambda c: (
-                0 if c.get("active") else 1,
-                0 if c.get("team_name") else 1,
-                c.get("full_name", ""),
-            )
-        )
+    if len(startswith_matches) == 1:
         return startswith_matches[0], candidates
 
     contains_matches = [c for c in candidates if nq in c.get("full_name_normalized", "")]
     if len(contains_matches) == 1:
         return contains_matches[0], candidates
+
+    active_candidates = [c for c in candidates if c.get("active")]
+    if len(active_candidates) == 1:
+        return active_candidates[0], candidates
 
     if len(candidates) == 1:
         return candidates[0], candidates
