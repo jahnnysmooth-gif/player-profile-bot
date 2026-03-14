@@ -40,6 +40,42 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =========================
+# TEAM COLORS
+# =========================
+TEAM_COLORS = {
+    "Arizona Diamondbacks": 0xA71930,
+    "Athletics": 0x003831,
+    "Atlanta Braves": 0xCE1141,
+    "Baltimore Orioles": 0xDF4601,
+    "Boston Red Sox": 0xBD3039,
+    "Chicago Cubs": 0x0E3386,
+    "Chicago White Sox": 0x27251F,
+    "Cincinnati Reds": 0xC6011F,
+    "Cleveland Guardians": 0x0C2340,
+    "Colorado Rockies": 0x333366,
+    "Detroit Tigers": 0x0C2340,
+    "Houston Astros": 0xEB6E1F,
+    "Kansas City Royals": 0x004687,
+    "Los Angeles Angels": 0xBA0021,
+    "Los Angeles Dodgers": 0x005A9C,
+    "Miami Marlins": 0x00A3E0,
+    "Milwaukee Brewers": 0x12284B,
+    "Minnesota Twins": 0x002B5C,
+    "New York Mets": 0x002D72,
+    "New York Yankees": 0x0C2340,
+    "Philadelphia Phillies": 0xE81828,
+    "Pittsburgh Pirates": 0xFDB827,
+    "San Diego Padres": 0x2F241D,
+    "San Francisco Giants": 0xFD5A1E,
+    "Seattle Mariners": 0x005C5C,
+    "St. Louis Cardinals": 0xC41E3A,
+    "Tampa Bay Rays": 0x092C5C,
+    "Texas Rangers": 0x003278,
+    "Toronto Blue Jays": 0x134A8E,
+    "Washington Nationals": 0xAB0003,
+}
+
+# =========================
 # GLOBAL CACHES / STATE
 # =========================
 BATTING_EV_DF_BY_SEASON = {}
@@ -189,6 +225,40 @@ def player_name_from_adp_cell(value: str) -> str:
     return text.strip()
 
 
+def get_team_color(team_name: str | None) -> int:
+    if not team_name:
+        return 0x0B5FFF
+    return TEAM_COLORS.get(team_name, 0x0B5FFF)
+
+
+def infer_tag_name(profile: dict) -> str | None:
+    pos = (profile.get("position") or "").upper()
+    p_stats = profile.get("pitching_stats") or {}
+
+    if pos == "P":
+        saves = safe_int_like(p_stats.get("saves"), 0) or 0
+        holds = safe_int_like(p_stats.get("holds"), 0) or 0
+        if saves > 0 or holds >= 5:
+            return "RP"
+        return "SP"
+
+    if pos in {"C", "1B", "2B", "3B", "SS", "OF", "DH"}:
+        return pos
+
+    return None
+
+
+def get_forum_tag_by_name(forum_channel: discord.ForumChannel, tag_name: str | None):
+    if not tag_name:
+        return None
+
+    for tag in forum_channel.available_tags:
+        if tag.name.strip().upper() == tag_name.strip().upper():
+            return tag
+
+    return None
+
+
 # =========================
 # SEEDER STATE HELPERS
 # =========================
@@ -297,14 +367,35 @@ def thread_matches_player(thread_name: str, player_name: str) -> bool:
     }
 
 
-async def find_existing_profile_thread(forum_channel: discord.ForumChannel, player_name: str):
+async def find_existing_profile_thread(
+    forum_channel: discord.ForumChannel,
+    player_name: str,
+    player_id: int | None = None,
+):
+    async def thread_matches(thread: discord.Thread):
+        if player_id is not None:
+            try:
+                starter = thread.starter_message
+                if starter is None:
+                    starter = await thread.fetch_message(thread.id)
+
+                if starter and starter.embeds:
+                    embed = starter.embeds[0]
+                    footer_text = embed.footer.text if embed.footer else ""
+                    if footer_text and footer_text.strip() == f"MLB_ID:{player_id}":
+                        return True
+            except Exception:
+                pass
+
+        return thread_matches_player(thread.name, player_name)
+
     for thread in forum_channel.threads:
-        if thread_matches_player(thread.name, player_name):
+        if await thread_matches(thread):
             return thread
 
     try:
         async for thread in forum_channel.archived_threads(limit=200):
-            if thread_matches_player(thread.name, player_name):
+            if await thread_matches(thread):
                 return thread
     except Exception as e:
         print(f"Archived thread check error: {e}")
@@ -325,9 +416,7 @@ async def fetch_json(url: str, params=None):
 
 
 async def fetch_text(url: str, params=None):
-    headers = {
-        "User-Agent": "Mozilla/5.0"
-    }
+    headers = {"User-Agent": "Mozilla/5.0"}
     async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get(url, params=params, timeout=30) as resp:
             if resp.status != 200:
@@ -814,7 +903,6 @@ def hitter_closing_line(profile: dict, curr_metrics: dict):
 
     hr = safe_int_like(h.get("homeRuns"))
     sb = safe_int_like(h.get("stolenBases"))
-    ops = safe_float(h.get("ops"))
     avg = safe_float(h.get("avg"))
     barrel = safe_float(curr_metrics.get("barrel"))
     xwoba = safe_float(curr_metrics.get("xwoba"))
@@ -1462,14 +1550,27 @@ def select_pitcher_metric_lines(curr_metrics: dict, prev_metrics: dict | None):
 
 
 # =========================
-# PROFILE TEXT BUILDERS
+# PROFILE EMBED BUILDERS
 # =========================
-def build_hitter_profile_text(profile: dict, curr_metrics: dict, prev_metrics: dict | None):
+def build_hitter_profile_embed(profile: dict, curr_metrics: dict, prev_metrics: dict | None):
     h = profile.get("hitting_stats") or {}
 
     team = first_non_empty(profile.get("team"), default="TBD")
     pos = first_non_empty(profile.get("position"), default="TBD")
     age = first_non_empty(profile.get("age"), default="TBD")
+    player_id = profile["id"]
+
+    embed = discord.Embed(
+        title=f"⚾ {profile['full_name']}",
+        description="━━━━━━━━━━━━━━━━",
+        color=get_team_color(profile.get("team")),
+    )
+
+    embed.add_field(
+        name="Player Info",
+        value=f"**Team:** {team}\n**Position:** {pos}\n**Age:** {age}",
+        inline=False,
+    )
 
     stat_lines = []
     add_line_if_meaningful(stat_lines, "AVG", h.get("avg"))
@@ -1479,43 +1580,58 @@ def build_hitter_profile_text(profile: dict, curr_metrics: dict, prev_metrics: d
     add_line_if_meaningful(stat_lines, "SB", h.get("stolenBases"))
     add_line_if_meaningful(stat_lines, "OPS", h.get("ops"))
 
+    if stat_lines:
+        embed.add_field(
+            name=f"{PROFILE_SEASON} Stats",
+            value="\n".join(stat_lines),
+            inline=False,
+        )
+
     metric_lines = []
     for label, value in select_hitter_metric_lines(curr_metrics, prev_metrics):
-        add_line_if_meaningful(metric_lines, label, value)
-
-    summary = summarize_hitter(profile, curr_metrics, prev_metrics)
-
-    parts = [
-        f"**{profile['full_name']} — {PROFILE_YEAR_LABEL} Player Profile**",
-        "",
-        f"**Team:** {team}",
-        f"**Position:** {pos}",
-        f"**Age:** {age}",
-        "",
-    ]
-
-    if stat_lines:
-        parts.append(f"**{PROFILE_SEASON} Stats**")
-        parts.extend(stat_lines)
-        parts.append("")
+        if not is_blank_or_zero(value):
+            metric_lines.append(f"{label}: {value}")
 
     if metric_lines:
-        parts.append("**Underlying Metrics**")
-        parts.extend(metric_lines)
-        parts.append("")
+        embed.add_field(
+            name="Underlying Metrics",
+            value="\n".join(metric_lines),
+            inline=False,
+        )
 
-    parts.append(f"**{PROFILE_YEAR_LABEL} Outlook**")
-    parts.append(summary)
+    summary = summarize_hitter(profile, curr_metrics, prev_metrics)
+    embed.add_field(
+        name=f"{PROFILE_YEAR_LABEL} Outlook",
+        value=summary,
+        inline=False,
+    )
 
-    return "\n".join(parts)
+    headshot_url = f"https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/{player_id}/headshot/67/current"
+    embed.set_thumbnail(url=headshot_url)
+    embed.set_footer(text=f"MLB_ID:{player_id}")
+
+    return embed
 
 
-def build_pitcher_profile_text(profile: dict, curr_metrics: dict, prev_metrics: dict | None):
+def build_pitcher_profile_embed(profile: dict, curr_metrics: dict, prev_metrics: dict | None):
     p = profile.get("pitching_stats") or {}
 
     team = first_non_empty(profile.get("team"), default="TBD")
     pos = first_non_empty(profile.get("position"), default="P")
     age = first_non_empty(profile.get("age"), default="TBD")
+    player_id = profile["id"]
+
+    embed = discord.Embed(
+        title=f"⚾ {profile['full_name']}",
+        description="━━━━━━━━━━━━━━━━",
+        color=get_team_color(profile.get("team")),
+    )
+
+    embed.add_field(
+        name="Player Info",
+        value=f"**Team:** {team}\n**Position:** {pos}\n**Age:** {age}",
+        inline=False,
+    )
 
     stat_lines = []
     add_line_if_meaningful(stat_lines, "W", p.get("wins"))
@@ -1526,35 +1642,37 @@ def build_pitcher_profile_text(profile: dict, curr_metrics: dict, prev_metrics: 
     add_line_if_meaningful(stat_lines, "SV", p.get("saves"))
     add_line_if_meaningful(stat_lines, "HLD", p.get("holds"))
 
+    if stat_lines:
+        embed.add_field(
+            name=f"{PROFILE_SEASON} Stats",
+            value="\n".join(stat_lines),
+            inline=False,
+        )
+
     metric_lines = []
     for label, value in select_pitcher_metric_lines(curr_metrics, prev_metrics):
-        add_line_if_meaningful(metric_lines, label, value)
-
-    summary = summarize_pitcher(profile, curr_metrics, prev_metrics)
-
-    parts = [
-        f"**{profile['full_name']} — {PROFILE_YEAR_LABEL} Player Profile**",
-        "",
-        f"**Team:** {team}",
-        f"**Position:** {pos}",
-        f"**Age:** {age}",
-        "",
-    ]
-
-    if stat_lines:
-        parts.append(f"**{PROFILE_SEASON} Stats**")
-        parts.extend(stat_lines)
-        parts.append("")
+        if not is_blank_or_zero(value):
+            metric_lines.append(f"{label}: {value}")
 
     if metric_lines:
-        parts.append("**Underlying Metrics**")
-        parts.extend(metric_lines)
-        parts.append("")
+        embed.add_field(
+            name="Underlying Metrics",
+            value="\n".join(metric_lines),
+            inline=False,
+        )
 
-    parts.append(f"**{PROFILE_YEAR_LABEL} Outlook**")
-    parts.append(summary)
+    summary = summarize_pitcher(profile, curr_metrics, prev_metrics)
+    embed.add_field(
+        name=f"{PROFILE_YEAR_LABEL} Outlook",
+        value=summary,
+        inline=False,
+    )
 
-    return "\n".join(parts)
+    headshot_url = f"https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/{player_id}/headshot/67/current"
+    embed.set_thumbnail(url=headshot_url)
+    embed.set_footer(text=f"MLB_ID:{player_id}")
+
+    return embed
 
 
 async def build_profile_text_for_player(player_id: int):
@@ -1572,13 +1690,13 @@ async def build_profile_text_for_player(player_id: int):
     if is_pitcher:
         curr_metrics = build_pitcher_metrics(current_profile, PROFILE_SEASON)
         prev_metrics = build_pitcher_metrics(previous_profile, PREV_SEASON) if previous_profile else None
-        body = build_pitcher_profile_text(current_profile, curr_metrics, prev_metrics)
+        embed = build_pitcher_profile_embed(current_profile, curr_metrics, prev_metrics)
     else:
         curr_metrics = build_hitter_metrics(current_profile, PROFILE_SEASON)
         prev_metrics = build_hitter_metrics(previous_profile, PREV_SEASON) if previous_profile else None
-        body = build_hitter_profile_text(current_profile, curr_metrics, prev_metrics)
+        embed = build_hitter_profile_embed(current_profile, curr_metrics, prev_metrics)
 
-    return current_profile, body
+    return current_profile, embed
 
 
 # =========================
@@ -1610,8 +1728,9 @@ async def create_profile_for_name(
         }
 
     player_name = best["full_name"]
+    player_id = best["id"]
 
-    existing = await find_existing_profile_thread(forum_channel, player_name)
+    existing = await find_existing_profile_thread(forum_channel, player_name, player_id=player_id)
     if existing:
         return {
             "status": "exists",
@@ -1620,16 +1739,21 @@ async def create_profile_for_name(
             "message": f"**{player_name}** already has a profile:\n{existing.jump_url}",
         }
 
-    profile, profile_body = await build_profile_text_for_player(best["id"])
-    if not profile or not profile_body:
+    profile, profile_embed = await build_profile_text_for_player(player_id)
+    if not profile or not profile_embed:
         return {
             "status": "error",
             "message": "I found the player, but I couldn’t build the profile right now."
         }
 
+    tag_name = infer_tag_name(profile)
+    tag_obj = get_forum_tag_by_name(forum_channel, tag_name)
+    applied_tags = [tag_obj] if tag_obj else []
+
     created = await forum_channel.create_thread(
         name=thread_title(profile["full_name"]),
-        content=profile_body,
+        embed=profile_embed,
+        applied_tags=applied_tags,
     )
 
     created_thread = created.thread if hasattr(created, "thread") else created
