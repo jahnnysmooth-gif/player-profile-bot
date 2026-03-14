@@ -6,8 +6,10 @@ import time
 import asyncio
 import random
 import unicodedata
+from datetime import datetime, date
 from io import StringIO
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import aiohttp
 import discord
@@ -35,6 +37,10 @@ SEED_SLEEP_MAX_SECONDS = 900   # 15 min
 COOLDOWN_SLEEP_SECONDS = 86400 # 24 hours
 
 SEED_STATE_FILE = Path("seed_state.json")
+THREAD_COMMAND_STATE_FILE = Path("thread_command_state.json")
+
+BOT_TIMEZONE = "America/New_York"
+OUTLOOK_UNLOCK_DATE = date(2026, 4, 15)
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -162,14 +168,23 @@ seed_state = {
     "seed_players": [],
 }
 
-# Only needed because Julio is the one stubborn edge case
+thread_command_state = {}
+
 PLAYER_NAME_OVERRIDES = {
-    "julio rodriguez": 677594,  # Julio Rodríguez (SEA)
+    "julio rodriguez": 677594,  # Julio Rodríguez
 }
 
 # =========================
 # BASIC HELPERS
 # =========================
+def current_local_date() -> date:
+    return datetime.now(ZoneInfo(BOT_TIMEZONE)).date()
+
+
+def current_local_date_str() -> str:
+    return current_local_date().isoformat()
+
+
 def normalize_text(text: str) -> str:
     if text is None:
         return ""
@@ -355,6 +370,52 @@ def get_forum_tag_by_name(forum_channel: discord.ForumChannel, tag_name: str | N
             return tag
 
     return None
+
+
+def player_name_from_thread_name(thread_name: str) -> str:
+    name = thread_name.strip()
+    name = re.sub(r"\s+\([A-Z]{2,4}\)\s*$", "", name)
+    return name.strip()
+
+
+# =========================
+# THREAD COMMAND STATE
+# =========================
+def load_thread_command_state():
+    global thread_command_state
+    if not THREAD_COMMAND_STATE_FILE.exists():
+        thread_command_state = {}
+        return
+
+    try:
+        with open(THREAD_COMMAND_STATE_FILE, "r", encoding="utf-8") as f:
+            thread_command_state = json.load(f)
+    except Exception as e:
+        print(f"Failed to load thread command state: {e}")
+        thread_command_state = {}
+
+
+def save_thread_command_state():
+    try:
+        with open(THREAD_COMMAND_STATE_FILE, "w", encoding="utf-8") as f:
+            json.dump(thread_command_state, f, indent=2)
+    except Exception as e:
+        print(f"Failed to save thread command state: {e}")
+
+
+def was_thread_command_used_today(thread_id: int, command_name: str) -> bool:
+    thread_key = str(thread_id)
+    today = current_local_date_str()
+    last_used = (thread_command_state.get(thread_key) or {}).get(command_name)
+    return last_used == today
+
+
+def mark_thread_command_used_today(thread_id: int, command_name: str):
+    thread_key = str(thread_id)
+    if thread_key not in thread_command_state:
+        thread_command_state[thread_key] = {}
+    thread_command_state[thread_key][command_name] = current_local_date_str()
+    save_thread_command_state()
 
 
 # =========================
@@ -693,6 +754,18 @@ async def fetch_player_full_profile(player_id: int, season: int):
         "pitching_stats": pitching,
         "season": season,
     }
+
+
+async def resolve_player_id_from_name(raw_player: str) -> int | None:
+    override_player_id = get_overridden_player_id(raw_player)
+    if override_player_id:
+        return override_player_id
+
+    candidates = await search_player_candidates(raw_player)
+    best, _ = choose_best_candidate(raw_player, candidates)
+    if not best:
+        return None
+    return best["id"]
 
 
 # =========================
@@ -1732,6 +1805,37 @@ def select_pitcher_metric_lines(curr_metrics: dict, prev_metrics: dict | None):
 
 
 # =========================
+# PLAYER DATA BUNDLE
+# =========================
+async def build_player_bundle(player_id: int):
+    current_profile = await fetch_player_full_profile(player_id, PROFILE_SEASON)
+    if not current_profile:
+        return None
+
+    previous_profile = await fetch_player_full_profile(player_id, PREV_SEASON)
+
+    await ensure_statcast_loaded(PROFILE_SEASON)
+    await ensure_statcast_loaded(PREV_SEASON)
+
+    is_pitcher = infer_is_pitcher(current_profile)
+
+    if is_pitcher:
+        curr_metrics = build_pitcher_metrics(current_profile, PROFILE_SEASON)
+        prev_metrics = build_pitcher_metrics(previous_profile, PREV_SEASON) if previous_profile else None
+    else:
+        curr_metrics = build_hitter_metrics(current_profile, PROFILE_SEASON)
+        prev_metrics = build_hitter_metrics(previous_profile, PREV_SEASON) if previous_profile else None
+
+    return {
+        "profile": current_profile,
+        "previous_profile": previous_profile,
+        "curr_metrics": curr_metrics,
+        "prev_metrics": prev_metrics,
+        "is_pitcher": is_pitcher,
+    }
+
+
+# =========================
 # PROFILE EMBED BUILDERS
 # =========================
 def build_hitter_profile_embed(profile: dict, curr_metrics: dict, prev_metrics: dict | None):
@@ -1867,28 +1971,193 @@ def build_pitcher_profile_embed(profile: dict, curr_metrics: dict, prev_metrics:
     return embed
 
 
-async def build_profile_text_for_player(player_id: int):
-    current_profile = await fetch_player_full_profile(player_id, PROFILE_SEASON)
-    if not current_profile:
-        return None, None
+def build_stats_embed(bundle: dict):
+    profile = bundle["profile"]
+    curr_metrics = bundle["curr_metrics"]
+    prev_metrics = bundle["prev_metrics"]
+    is_pitcher = bundle["is_pitcher"]
+    player_id = profile["id"]
 
-    previous_profile = await fetch_player_full_profile(player_id, PREV_SEASON)
+    embed = discord.Embed(
+        title=f"{profile['full_name']} — {PROFILE_SEASON} Stats",
+        color=get_team_color(profile.get("team")),
+    )
 
-    await ensure_statcast_loaded(PROFILE_SEASON)
-    await ensure_statcast_loaded(PREV_SEASON)
-
-    is_pitcher = infer_is_pitcher(current_profile)
+    team_logo = get_team_logo(profile.get("team"))
+    if team_logo:
+        embed.set_author(name=profile["full_name"], icon_url=team_logo)
+        embed.title = f"{PROFILE_SEASON} Stats"
 
     if is_pitcher:
-        curr_metrics = build_pitcher_metrics(current_profile, PROFILE_SEASON)
-        prev_metrics = build_pitcher_metrics(previous_profile, PREV_SEASON) if previous_profile else None
-        embed = build_pitcher_profile_embed(current_profile, curr_metrics, prev_metrics)
-    else:
-        curr_metrics = build_hitter_metrics(current_profile, PROFILE_SEASON)
-        prev_metrics = build_hitter_metrics(previous_profile, PREV_SEASON) if previous_profile else None
-        embed = build_hitter_profile_embed(current_profile, curr_metrics, prev_metrics)
+        p = profile.get("pitching_stats") or {}
+        stat_lines = []
+        add_line_if_meaningful(stat_lines, "W", p.get("wins"))
+        add_line_if_meaningful(stat_lines, "ERA", p.get("era"))
+        add_line_if_meaningful(stat_lines, "WHIP", p.get("whip"))
+        add_line_if_meaningful(stat_lines, "IP", p.get("inningsPitched"))
+        add_line_if_meaningful(stat_lines, "K", p.get("strikeOuts"))
+        add_line_if_meaningful(stat_lines, "SV", p.get("saves"))
+        add_line_if_meaningful(stat_lines, "HLD", p.get("holds"))
+        embed.add_field(name="Surface Stats", value="\n".join(stat_lines) if stat_lines else "N/A", inline=False)
 
-    return current_profile, embed
+        metric_lines = []
+        for label, value in select_pitcher_metric_lines(curr_metrics, prev_metrics):
+            metric_lines.append(f"{label}: {value}")
+        embed.add_field(name="Underlying Metrics", value="\n".join(metric_lines) if metric_lines else "N/A", inline=False)
+    else:
+        h = profile.get("hitting_stats") or {}
+        stat_lines = []
+        add_line_if_meaningful(stat_lines, "AVG", h.get("avg"))
+        add_line_if_meaningful(stat_lines, "HR", h.get("homeRuns"))
+        add_line_if_meaningful(stat_lines, "RBI", h.get("rbi"))
+        add_line_if_meaningful(stat_lines, "R", h.get("runs"))
+        add_line_if_meaningful(stat_lines, "SB", h.get("stolenBases"))
+        add_line_if_meaningful(stat_lines, "OPS", h.get("ops"))
+        embed.add_field(name="Surface Stats", value="\n".join(stat_lines) if stat_lines else "N/A", inline=False)
+
+        metric_lines = []
+        for label, value in select_hitter_metric_lines(curr_metrics, prev_metrics):
+            metric_lines.append(f"{label}: {value}")
+        embed.add_field(name="Underlying Metrics", value="\n".join(metric_lines) if metric_lines else "N/A", inline=False)
+
+    headshot_url = f"https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/{player_id}/headshot/67/current"
+    embed.set_thumbnail(url=headshot_url)
+    embed.set_footer(text=f"MLB_ID:{player_id}")
+
+    return embed
+
+
+def build_outlook_embed(bundle: dict):
+    profile = bundle["profile"]
+    curr_metrics = bundle["curr_metrics"]
+    prev_metrics = bundle["prev_metrics"]
+    is_pitcher = bundle["is_pitcher"]
+    player_id = profile["id"]
+
+    embed = discord.Embed(
+        title=f"{profile['full_name']} — {PROFILE_YEAR_LABEL} Outlook",
+        color=get_team_color(profile.get("team")),
+    )
+
+    team_logo = get_team_logo(profile.get("team"))
+    if team_logo:
+        embed.set_author(name=profile["full_name"], icon_url=team_logo)
+        embed.title = f"{PROFILE_YEAR_LABEL} Outlook"
+
+    if is_pitcher:
+        p = profile.get("pitching_stats") or {}
+        key_lines = []
+        add_line_if_meaningful(key_lines, "ERA", p.get("era"))
+        add_line_if_meaningful(key_lines, "WHIP", p.get("whip"))
+        add_line_if_meaningful(key_lines, "K", p.get("strikeOuts"))
+        add_line_if_meaningful(key_lines, "SV", p.get("saves"))
+        embed.add_field(name="Key Stats", value="\n".join(key_lines) if key_lines else "N/A", inline=False)
+        embed.add_field(
+            name="Outlook",
+            value=summarize_pitcher(profile, curr_metrics, prev_metrics),
+            inline=False,
+        )
+    else:
+        h = profile.get("hitting_stats") or {}
+        key_lines = []
+        add_line_if_meaningful(key_lines, "AVG", h.get("avg"))
+        add_line_if_meaningful(key_lines, "HR", h.get("homeRuns"))
+        add_line_if_meaningful(key_lines, "RBI", h.get("rbi"))
+        add_line_if_meaningful(key_lines, "SB", h.get("stolenBases"))
+        embed.add_field(name="Key Stats", value="\n".join(key_lines) if key_lines else "N/A", inline=False)
+        embed.add_field(
+            name="Outlook",
+            value=summarize_hitter(profile, curr_metrics, prev_metrics),
+            inline=False,
+        )
+
+    headshot_url = f"https://img.mlbstatic.com/mlb-photos/image/upload/w_213,q_auto:best/v1/people/{player_id}/headshot/67/current"
+    embed.set_thumbnail(url=headshot_url)
+    embed.set_footer(text=f"MLB_ID:{player_id}")
+
+    return embed
+
+
+def build_compare_embed(bundle_a: dict, bundle_b: dict):
+    profile_a = bundle_a["profile"]
+    profile_b = bundle_b["profile"]
+    is_pitcher = bundle_a["is_pitcher"]
+
+    embed = discord.Embed(
+        title=f"{profile_a['full_name']} vs {profile_b['full_name']}",
+        color=get_team_color(profile_a.get("team")),
+    )
+
+    if is_pitcher:
+        p1 = profile_a.get("pitching_stats") or {}
+        p2 = profile_b.get("pitching_stats") or {}
+        m1 = bundle_a["curr_metrics"]
+        m2 = bundle_b["curr_metrics"]
+
+        left = [
+            f"ERA: {first_non_empty(p1.get('era'), default='N/A')}",
+            f"WHIP: {first_non_empty(p1.get('whip'), default='N/A')}",
+            f"K: {first_non_empty(p1.get('strikeOuts'), default='N/A')}",
+            f"IP: {first_non_empty(p1.get('inningsPitched'), default='N/A')}",
+            f"SV: {first_non_empty(p1.get('saves'), default='N/A')}",
+            f"xERA: {clean_num(m1.get('xera'), 2)}",
+            f"K-BB%: {pct_str(m1.get('k_minus_bb'))}",
+        ]
+        right = [
+            f"ERA: {first_non_empty(p2.get('era'), default='N/A')}",
+            f"WHIP: {first_non_empty(p2.get('whip'), default='N/A')}",
+            f"K: {first_non_empty(p2.get('strikeOuts'), default='N/A')}",
+            f"IP: {first_non_empty(p2.get('inningsPitched'), default='N/A')}",
+            f"SV: {first_non_empty(p2.get('saves'), default='N/A')}",
+            f"xERA: {clean_num(m2.get('xera'), 2)}",
+            f"K-BB%: {pct_str(m2.get('k_minus_bb'))}",
+        ]
+    else:
+        h1 = profile_a.get("hitting_stats") or {}
+        h2 = profile_b.get("hitting_stats") or {}
+        m1 = bundle_a["curr_metrics"]
+        m2 = bundle_b["curr_metrics"]
+
+        left = [
+            f"AVG: {first_non_empty(h1.get('avg'), default='N/A')}",
+            f"HR: {first_non_empty(h1.get('homeRuns'), default='N/A')}",
+            f"RBI: {first_non_empty(h1.get('rbi'), default='N/A')}",
+            f"SB: {first_non_empty(h1.get('stolenBases'), default='N/A')}",
+            f"OPS: {first_non_empty(h1.get('ops'), default='N/A')}",
+            f"xwOBA: {clean_num(m1.get('xwoba'), 3)}",
+            f"Barrel%: {pct_str(m1.get('barrel'))}",
+        ]
+        right = [
+            f"AVG: {first_non_empty(h2.get('avg'), default='N/A')}",
+            f"HR: {first_non_empty(h2.get('homeRuns'), default='N/A')}",
+            f"RBI: {first_non_empty(h2.get('rbi'), default='N/A')}",
+            f"SB: {first_non_empty(h2.get('stolenBases'), default='N/A')}",
+            f"OPS: {first_non_empty(h2.get('ops'), default='N/A')}",
+            f"xwOBA: {clean_num(m2.get('xwoba'), 3)}",
+            f"Barrel%: {pct_str(m2.get('barrel'))}",
+        ]
+
+    embed.add_field(name=profile_a["full_name"], value="\n".join(left), inline=True)
+    embed.add_field(name=profile_b["full_name"], value="\n".join(right), inline=True)
+    embed.set_footer(text=f"{PROFILE_SEASON} comparison")
+    return embed
+
+
+async def build_profile_text_for_player(player_id: int):
+    bundle = await build_player_bundle(player_id)
+    if not bundle:
+        return None, None
+
+    profile = bundle["profile"]
+    curr_metrics = bundle["curr_metrics"]
+    prev_metrics = bundle["prev_metrics"]
+
+    if bundle["is_pitcher"]:
+        embed = build_pitcher_profile_embed(profile, curr_metrics, prev_metrics)
+    else:
+        embed = build_hitter_profile_embed(profile, curr_metrics, prev_metrics)
+
+    return profile, embed
 
 
 # =========================
@@ -1995,6 +2264,24 @@ async def create_profile_for_name(
         "url": created_thread.jump_url,
         "message": f"Profile created: {created_thread.jump_url}",
     }
+
+
+# =========================
+# THREAD COMMAND HELPERS
+# =========================
+async def resolve_bundle_from_thread(thread: discord.Thread):
+    player_name = player_name_from_thread_name(thread.name)
+    player_id = await resolve_player_id_from_name(player_name)
+    if not player_id:
+        return None
+    return await build_player_bundle(player_id)
+
+
+async def resolve_bundle_from_name(player_name: str):
+    player_id = await resolve_player_id_from_name(player_name)
+    if not player_id:
+        return None
+    return await build_player_bundle(player_id)
 
 
 # =========================
@@ -2107,6 +2394,7 @@ async def on_ready():
     print(f"Logged in as {bot.user}")
 
     load_seed_state()
+    load_thread_command_state()
 
     if seeder_task is None or seeder_task.done():
         seeder_task = asyncio.create_task(background_seeder_loop())
@@ -2118,22 +2406,97 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    if message.channel.id != REQUEST_THREAD_ID:
-        return
-
     content = message.content.strip()
     if not content.startswith("!"):
         return
 
     command_text = content[1:].strip()
     if not command_text:
-        await message.reply(
-            "Use a player name after the exclamation point, like `!Juan Soto`.",
-            mention_author=False,
-        )
         return
 
     lowered = command_text.lower()
+
+    # =========================
+    # THREAD COMMANDS
+    # =========================
+    if isinstance(message.channel, discord.Thread) and message.channel.parent_id == FORUM_CHANNEL_ID:
+        thread = message.channel
+
+        if lowered == "stats":
+            if was_thread_command_used_today(thread.id, "stats"):
+                await message.reply("Stats were already posted in this thread today.", mention_author=False)
+                return
+
+            bundle = await resolve_bundle_from_thread(thread)
+            if not bundle:
+                await message.reply("I couldn’t load this player’s stats right now.", mention_author=False)
+                return
+
+            embed = build_stats_embed(bundle)
+            await thread.send(embed=embed)
+            mark_thread_command_used_today(thread.id, "stats")
+            return
+
+        if lowered == "outlook":
+            if current_local_date() < OUTLOOK_UNLOCK_DATE:
+                await message.reply("`!outlook` is disabled until April 15, 2026.", mention_author=False)
+                return
+
+            if was_thread_command_used_today(thread.id, "outlook"):
+                await message.reply("Outlook was already posted in this thread today.", mention_author=False)
+                return
+
+            bundle = await resolve_bundle_from_thread(thread)
+            if not bundle:
+                await message.reply("I couldn’t load this player’s outlook right now.", mention_author=False)
+                return
+
+            embed = build_outlook_embed(bundle)
+            await thread.send(embed=embed)
+            mark_thread_command_used_today(thread.id, "outlook")
+            return
+
+        if lowered.startswith("compare"):
+            if was_thread_command_used_today(thread.id, "compare"):
+                await message.reply("Compare was already used in this thread today.", mention_author=False)
+                return
+
+            parts = command_text.split(" ", 1)
+            if len(parts) < 2 or not parts[1].strip():
+                await message.reply("Use `!compare Player Name`.", mention_author=False)
+                return
+
+            target_name = parts[1].strip()
+
+            base_bundle = await resolve_bundle_from_thread(thread)
+            if not base_bundle:
+                await message.reply("I couldn’t load the player from this thread.", mention_author=False)
+                return
+
+            target_bundle = await resolve_bundle_from_name(target_name)
+            if not target_bundle:
+                await message.reply(f'I couldn’t find a player match for "{target_name}".', mention_author=False)
+                return
+
+            if base_bundle["profile"]["id"] == target_bundle["profile"]["id"]:
+                await message.reply("Pick a different player to compare against.", mention_author=False)
+                return
+
+            if base_bundle["is_pitcher"] != target_bundle["is_pitcher"]:
+                await message.reply("Compare works best when both players are the same type (hitter vs hitter or pitcher vs pitcher).", mention_author=False)
+                return
+
+            embed = build_compare_embed(base_bundle, target_bundle)
+            await thread.send(embed=embed)
+            mark_thread_command_used_today(thread.id, "compare")
+            return
+
+    # =========================
+    # REQUEST THREAD COMMANDS
+    # =========================
+    if message.channel.id != REQUEST_THREAD_ID:
+        return
+
     forum_channel = bot.get_channel(FORUM_CHANNEL_ID)
     if forum_channel is None:
         await message.reply(
