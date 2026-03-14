@@ -617,33 +617,46 @@ def choose_best_candidate(query: str, candidates: list[dict]):
 
     nq = normalize_text(query)
 
+    # Exact normalized match
     exact = [c for c in candidates if c.get("full_name_normalized") == nq]
     if exact:
         exact.sort(
             key=lambda c: (
                 0 if c.get("active") else 1,
                 0 if c.get("team_name") else 1,
+                0 if c.get("primary_position") else 1,
                 c.get("full_name", ""),
             )
         )
-        return exact[0], candidates
+        return exact[0], exact
 
-    startswith_matches = [c for c in candidates if c.get("full_name_normalized", "").startswith(nq)]
+    # Startswith match
+    startswith_matches = [
+        c for c in candidates
+        if c.get("full_name_normalized", "").startswith(nq)
+    ]
     if len(startswith_matches) == 1:
-        return startswith_matches[0], candidates
+        return startswith_matches[0], startswith_matches
 
-    contains_matches = [c for c in candidates if nq in c.get("full_name_normalized", "")]
+    # Contains match
+    contains_matches = [
+        c for c in candidates
+        if nq in c.get("full_name_normalized", "")
+    ]
     if len(contains_matches) == 1:
-        return contains_matches[0], candidates
+        return contains_matches[0], contains_matches
 
+    # Prefer active players
     active_candidates = [c for c in candidates if c.get("active")]
     if len(active_candidates) == 1:
-        return active_candidates[0], candidates
+        return active_candidates[0], active_candidates
 
+    # If only one candidate
     if len(candidates) == 1:
         return candidates[0], candidates
 
     return None, candidates
+
 
 
 async def fetch_player_full_profile(player_id: int, season: int):
