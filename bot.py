@@ -5,6 +5,7 @@ import json
 import time
 import asyncio
 import random
+import unicodedata
 from io import StringIO
 from pathlib import Path
 
@@ -40,7 +41,7 @@ intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # =========================
-# TEAM COLORS
+# TEAM COLORS / ABBREVS / LOGOS
 # =========================
 TEAM_COLORS = {
     "Arizona Diamondbacks": 0xA71930,
@@ -75,6 +76,72 @@ TEAM_COLORS = {
     "Washington Nationals": 0xAB0003,
 }
 
+TEAM_ABBREVS = {
+    "Arizona Diamondbacks": "ARI",
+    "Athletics": "ATH",
+    "Atlanta Braves": "ATL",
+    "Baltimore Orioles": "BAL",
+    "Boston Red Sox": "BOS",
+    "Chicago Cubs": "CHC",
+    "Chicago White Sox": "CWS",
+    "Cincinnati Reds": "CIN",
+    "Cleveland Guardians": "CLE",
+    "Colorado Rockies": "COL",
+    "Detroit Tigers": "DET",
+    "Houston Astros": "HOU",
+    "Kansas City Royals": "KC",
+    "Los Angeles Angels": "LAA",
+    "Los Angeles Dodgers": "LAD",
+    "Miami Marlins": "MIA",
+    "Milwaukee Brewers": "MIL",
+    "Minnesota Twins": "MIN",
+    "New York Mets": "NYM",
+    "New York Yankees": "NYY",
+    "Philadelphia Phillies": "PHI",
+    "Pittsburgh Pirates": "PIT",
+    "San Diego Padres": "SD",
+    "San Francisco Giants": "SF",
+    "Seattle Mariners": "SEA",
+    "St. Louis Cardinals": "STL",
+    "Tampa Bay Rays": "TB",
+    "Texas Rangers": "TEX",
+    "Toronto Blue Jays": "TOR",
+    "Washington Nationals": "WSH",
+}
+
+TEAM_LOGOS = {
+    "Arizona Diamondbacks": "https://a.espncdn.com/i/teamlogos/mlb/500/ari.png",
+    "Athletics": "https://a.espncdn.com/i/teamlogos/mlb/500/oak.png",
+    "Atlanta Braves": "https://a.espncdn.com/i/teamlogos/mlb/500/atl.png",
+    "Baltimore Orioles": "https://a.espncdn.com/i/teamlogos/mlb/500/bal.png",
+    "Boston Red Sox": "https://a.espncdn.com/i/teamlogos/mlb/500/bos.png",
+    "Chicago Cubs": "https://a.espncdn.com/i/teamlogos/mlb/500/chc.png",
+    "Chicago White Sox": "https://a.espncdn.com/i/teamlogos/mlb/500/chw.png",
+    "Cincinnati Reds": "https://a.espncdn.com/i/teamlogos/mlb/500/cin.png",
+    "Cleveland Guardians": "https://a.espncdn.com/i/teamlogos/mlb/500/cle.png",
+    "Colorado Rockies": "https://a.espncdn.com/i/teamlogos/mlb/500/col.png",
+    "Detroit Tigers": "https://a.espncdn.com/i/teamlogos/mlb/500/det.png",
+    "Houston Astros": "https://a.espncdn.com/i/teamlogos/mlb/500/hou.png",
+    "Kansas City Royals": "https://a.espncdn.com/i/teamlogos/mlb/500/kc.png",
+    "Los Angeles Angels": "https://a.espncdn.com/i/teamlogos/mlb/500/laa.png",
+    "Los Angeles Dodgers": "https://a.espncdn.com/i/teamlogos/mlb/500/lad.png",
+    "Miami Marlins": "https://a.espncdn.com/i/teamlogos/mlb/500/mia.png",
+    "Milwaukee Brewers": "https://a.espncdn.com/i/teamlogos/mlb/500/mil.png",
+    "Minnesota Twins": "https://a.espncdn.com/i/teamlogos/mlb/500/min.png",
+    "New York Mets": "https://a.espncdn.com/i/teamlogos/mlb/500/nym.png",
+    "New York Yankees": "https://a.espncdn.com/i/teamlogos/mlb/500/nyy.png",
+    "Philadelphia Phillies": "https://a.espncdn.com/i/teamlogos/mlb/500/phi.png",
+    "Pittsburgh Pirates": "https://a.espncdn.com/i/teamlogos/mlb/500/pit.png",
+    "San Diego Padres": "https://a.espncdn.com/i/teamlogos/mlb/500/sd.png",
+    "San Francisco Giants": "https://a.espncdn.com/i/teamlogos/mlb/500/sf.png",
+    "Seattle Mariners": "https://a.espncdn.com/i/teamlogos/mlb/500/sea.png",
+    "St. Louis Cardinals": "https://a.espncdn.com/i/teamlogos/mlb/500/stl.png",
+    "Tampa Bay Rays": "https://a.espncdn.com/i/teamlogos/mlb/500/tb.png",
+    "Texas Rangers": "https://a.espncdn.com/i/teamlogos/mlb/500/tex.png",
+    "Toronto Blue Jays": "https://a.espncdn.com/i/teamlogos/mlb/500/tor.png",
+    "Washington Nationals": "https://a.espncdn.com/i/teamlogos/mlb/500/wsh.png",
+}
+
 # =========================
 # GLOBAL CACHES / STATE
 # =========================
@@ -99,13 +166,33 @@ seed_state = {
 # BASIC HELPERS
 # =========================
 def normalize_text(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r"[^\w\s\-'.]", "", text)
-    text = re.sub(r"\s+", " ", text)
+    if text is None:
+        return ""
+
+    text = str(text).strip()
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = text.lower()
+
+    # Make matching more forgiving
+    text = text.replace("'", "")
+    text = text.replace("’", "")
+    text = text.replace(".", "")
+
+    # Keep only letters/numbers/spaces/hyphens/parentheses, then normalize spaces
+    text = re.sub(r"[^a-z0-9\s\-()]", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
-def thread_title(player_name: str) -> str:
+def team_abbrev_from_profile(profile: dict) -> str:
+    team_name = (profile.get("team") or "").strip()
+    return TEAM_ABBREVS.get(team_name, "")
+
+
+def thread_title(player_name: str, team_abbrev: str = "") -> str:
+    if team_abbrev:
+        return f"{player_name} ({team_abbrev})"
     return player_name
 
 
@@ -229,6 +316,12 @@ def get_team_color(team_name: str | None) -> int:
     if not team_name:
         return 0x0B5FFF
     return TEAM_COLORS.get(team_name, 0x0B5FFF)
+
+
+def get_team_logo(team_name: str | None) -> str | None:
+    if not team_name:
+        return None
+    return TEAM_LOGOS.get(team_name)
 
 
 def infer_tag_name(profile: dict) -> str | None:
@@ -359,10 +452,16 @@ def get_seed_status_text() -> str:
 # =========================
 # DISCORD THREAD HELPERS
 # =========================
+def canonical_thread_name(thread_name: str) -> str:
+    name = thread_name.strip()
+    name = re.sub(r"\s+\([A-Z]{2,4}\)\s*$", "", name)
+    return normalize_text(name)
+
+
 def thread_matches_player(thread_name: str, player_name: str) -> bool:
-    normalized_thread = normalize_text(thread_name)
+    normalized_thread = canonical_thread_name(thread_name)
     return normalized_thread in {
-        normalize_text(thread_title(player_name)),
+        normalize_text(player_name),
         normalize_text(old_profile_title(player_name)),
     }
 
@@ -444,6 +543,7 @@ async def search_player_candidates(player_query: str):
             {
                 "id": p.get("id"),
                 "full_name": full_name,
+                "full_name_normalized": normalize_text(full_name),
                 "current_age": p.get("currentAge"),
                 "active": p.get("active", False),
                 "primary_position": (p.get("primaryPosition") or {}).get("abbreviation"),
@@ -461,9 +561,31 @@ def choose_best_candidate(query: str, candidates: list[dict]):
 
     nq = normalize_text(query)
 
-    exact = [c for c in candidates if normalize_text(c["full_name"]) == nq]
+    exact = [c for c in candidates if c.get("full_name_normalized") == nq]
     if exact:
+        exact.sort(
+            key=lambda c: (
+                0 if c.get("active") else 1,
+                0 if c.get("team_name") else 1,
+                c.get("full_name", ""),
+            )
+        )
         return exact[0], candidates
+
+    startswith_matches = [c for c in candidates if c.get("full_name_normalized", "").startswith(nq)]
+    if startswith_matches:
+        startswith_matches.sort(
+            key=lambda c: (
+                0 if c.get("active") else 1,
+                0 if c.get("team_name") else 1,
+                c.get("full_name", ""),
+            )
+        )
+        return startswith_matches[0], candidates
+
+    contains_matches = [c for c in candidates if nq in c.get("full_name_normalized", "")]
+    if len(contains_matches) == 1:
+        return contains_matches[0], candidates
 
     if len(candidates) == 1:
         return candidates[0], candidates
@@ -1561,10 +1683,15 @@ def build_hitter_profile_embed(profile: dict, curr_metrics: dict, prev_metrics: 
     player_id = profile["id"]
 
     embed = discord.Embed(
-        title=f"⚾ {profile['full_name']}",
+        title=profile["full_name"],
         description="━━━━━━━━━━━━━━━━",
         color=get_team_color(profile.get("team")),
     )
+
+    team_logo = get_team_logo(profile.get("team"))
+    if team_logo:
+        embed.set_author(name=profile["full_name"], icon_url=team_logo)
+        embed.title = ""
 
     embed.add_field(
         name="Player Info",
@@ -1622,10 +1749,15 @@ def build_pitcher_profile_embed(profile: dict, curr_metrics: dict, prev_metrics:
     player_id = profile["id"]
 
     embed = discord.Embed(
-        title=f"⚾ {profile['full_name']}",
+        title=profile["full_name"],
         description="━━━━━━━━━━━━━━━━",
         color=get_team_color(profile.get("team")),
     )
+
+    team_logo = get_team_logo(profile.get("team"))
+    if team_logo:
+        embed.set_author(name=profile["full_name"], icon_url=team_logo)
+        embed.title = ""
 
     embed.add_field(
         name="Player Info",
@@ -1717,8 +1849,9 @@ async def create_profile_for_name(
         seen = set()
         for c in all_candidates[:5]:
             nm = c["full_name"]
-            if nm not in seen:
-                seen.add(nm)
+            norm_nm = normalize_text(nm)
+            if norm_nm not in seen:
+                seen.add(norm_nm)
                 names.append(nm)
 
         suggestion_text = "\n".join(f"• {nm}" for nm in names)
@@ -1750,8 +1883,10 @@ async def create_profile_for_name(
     tag_obj = get_forum_tag_by_name(forum_channel, tag_name)
     applied_tags = [tag_obj] if tag_obj else []
 
+    team_abbrev = team_abbrev_from_profile(profile)
+
     created = await forum_channel.create_thread(
-        name=thread_title(profile["full_name"]),
+        name=thread_title(profile["full_name"], team_abbrev),
         embed=profile_embed,
         applied_tags=applied_tags,
     )
