@@ -1,0 +1,6 @@
+aiohttp
+discord.py
+pandas
+beautifulsoup4
+lxml
+pybaseball
