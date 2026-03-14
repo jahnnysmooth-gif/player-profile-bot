@@ -162,6 +162,11 @@ seed_state = {
     "seed_players": [],
 }
 
+# Only needed because Julio is the one stubborn edge case
+PLAYER_NAME_OVERRIDES = {
+    "julio rodriguez": 677594,  # Julio Rodríguez (SEA)
+}
+
 # =========================
 # BASIC HELPERS
 # =========================
@@ -179,6 +184,10 @@ def normalize_text(text: str) -> str:
     text = re.sub(r"[^a-z0-9\s\-()]", " ", text)
     text = re.sub(r"\s+", " ", text).strip()
     return text
+
+
+def get_overridden_player_id(player_name: str) -> int | None:
+    return PLAYER_NAME_OVERRIDES.get(normalize_text(player_name))
 
 
 def team_abbrev_from_profile(profile: dict) -> str:
@@ -524,7 +533,6 @@ async def search_player_candidates(player_query: str):
     candidates = []
     seen_ids = set()
 
-    # Primary search: MLB StatsAPI
     url = "https://statsapi.mlb.com/api/v1/people/search"
     params = {"names": player_query}
     data = await fetch_json(url, params=params)
@@ -555,7 +563,6 @@ async def search_player_candidates(player_query: str):
     if any(c.get("full_name_normalized") == nq for c in candidates):
         return candidates
 
-    # Fallback: pybaseball name lookup
     try:
         parts = player_query.strip().split()
         if len(parts) >= 2:
@@ -617,46 +624,33 @@ def choose_best_candidate(query: str, candidates: list[dict]):
 
     nq = normalize_text(query)
 
-    # Exact normalized match
     exact = [c for c in candidates if c.get("full_name_normalized") == nq]
     if exact:
         exact.sort(
             key=lambda c: (
                 0 if c.get("active") else 1,
                 0 if c.get("team_name") else 1,
-                0 if c.get("primary_position") else 1,
                 c.get("full_name", ""),
             )
         )
-        return exact[0], exact
+        return exact[0], candidates
 
-    # Startswith match
-    startswith_matches = [
-        c for c in candidates
-        if c.get("full_name_normalized", "").startswith(nq)
-    ]
+    startswith_matches = [c for c in candidates if c.get("full_name_normalized", "").startswith(nq)]
     if len(startswith_matches) == 1:
-        return startswith_matches[0], startswith_matches
+        return startswith_matches[0], candidates
 
-    # Contains match
-    contains_matches = [
-        c for c in candidates
-        if nq in c.get("full_name_normalized", "")
-    ]
+    contains_matches = [c for c in candidates if nq in c.get("full_name_normalized", "")]
     if len(contains_matches) == 1:
-        return contains_matches[0], contains_matches
+        return contains_matches[0], candidates
 
-    # Prefer active players
     active_candidates = [c for c in candidates if c.get("active")]
     if len(active_candidates) == 1:
-        return active_candidates[0], active_candidates
+        return active_candidates[0], candidates
 
-    # If only one candidate
     if len(candidates) == 1:
         return candidates[0], candidates
 
     return None, candidates
-
 
 
 async def fetch_player_full_profile(player_id: int, season: int):
@@ -1904,6 +1898,43 @@ async def create_profile_for_name(
     raw_player: str,
     forum_channel: discord.ForumChannel,
 ):
+    override_player_id = get_overridden_player_id(raw_player)
+    if override_player_id:
+        existing = await find_existing_profile_thread(
+            forum_channel,
+            raw_player,
+            player_id=override_player_id,
+        )
+        if existing:
+            return {
+                "status": "exists",
+                "player_name": raw_player,
+                "url": existing.jump_url,
+                "message": f"**{existing.name}** already has a profile:\n{existing.jump_url}",
+            }
+
+        profile, profile_embed = await build_profile_text_for_player(override_player_id)
+        if profile and profile_embed:
+            tag_name = infer_tag_name(profile)
+            tag_obj = get_forum_tag_by_name(forum_channel, tag_name)
+            applied_tags = [tag_obj] if tag_obj else []
+
+            team_abbrev = team_abbrev_from_profile(profile)
+
+            created = await forum_channel.create_thread(
+                name=thread_title(profile["full_name"], team_abbrev),
+                embed=profile_embed,
+                applied_tags=applied_tags,
+            )
+
+            created_thread = created.thread if hasattr(created, "thread") else created
+            return {
+                "status": "created",
+                "player_name": profile["full_name"],
+                "url": created_thread.jump_url,
+                "message": f"Profile created: {created_thread.jump_url}",
+            }
+
     candidates = await search_player_candidates(raw_player)
     best, all_candidates = choose_best_candidate(raw_player, candidates)
 
